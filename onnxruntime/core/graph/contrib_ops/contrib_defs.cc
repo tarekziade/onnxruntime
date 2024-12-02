@@ -1980,6 +1980,56 @@ Matrix product that behaves like numpy.matmul: https://docs.scipy.org/doc/numpy-
                                   ONNX_NAMESPACE::defs::math::utils::MatMulShapeInference(ctx, 0, 1);
                                 }));
 
+
+constexpr const char* FirefoxMatMulInteger_doc = R"DOC(
+Matrix product that behaves like numpy.matmul: https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.matmul.html
+)DOC";
+
+
+
+ONNX_MS_OPERATOR_SET_SCHEMA(FirefoxMatMulInteger8, 1,
+                            OpSchema()
+                                .SetDoc(FirefoxMatMulInteger_doc)
+                                .Input(0, "A", "N-dimensional matrix A", "T1")
+                                .Input(1, "B", "N-dimensional matrix B", "T2")
+                                .Input(2, "a_zero_point",
+                                   "Zero point tensor for input 'A'. It's optional and default value is 0.  It could be a scalar or a 1-D "
+                                   "tensor, "
+                                   "which means a per-tensor or per-column quantization. If it's a 1-D tensor, its number "
+                                   "of elements should be equal to the number of columns of input 'A'.",
+                                 "T1", OpSchema::Optional)
+                                .Input(3, "b_zero_point",
+                                   "Zero point tensor for input 'B'. It's optional and default value is 0.  It could be a scalar or a 1-D "
+                                   "tensor, "
+                                   "which means a per-tensor or per-column quantization. If it's a 1-D tensor, its number "
+                                   "of elements should be equal to the number of columns of input 'B'.",
+                                 "T2", OpSchema::Optional)
+                                .Output(0, "Y", "Matrix multiply results from A * B", "T3")
+                                .TypeConstraint("T1", {"tensor(int8)", "tensor(uint8)"}, "Constrain input A data types as 8-bit integer tensor")
+                                .TypeConstraint("T2", {"tensor(int8)", "tensor(uint8)"}, "Constrain input B data types as 8-bit integer tensor")
+                                .TypeConstraint("T3",
+                                                {"tensor(int32)", "tensor(uint32)"},
+                                                "Constrain output Y data types as 32-bit integer tensor."
+                                                "T3 must be tensor(uint16) when both T1 and T2 are tensor(uint8),"
+                                                "or must be tensor(int16) when either T1 or T2 is tensor(int8).")
+                                .TypeAndShapeInferenceFunction([](ONNX_NAMESPACE::InferenceContext& ctx) {
+                                  auto a_type = ctx.getInputType(0);
+                                  auto b_type = ctx.getInputType(1);
+                                  auto y_type = ctx.getOutputType(0);
+                                  if (nullptr == a_type || nullptr == b_type || nullptr == y_type ||
+                                      a_type->value_case() != ONNX_NAMESPACE::TypeProto::kTensorType ||
+                                      b_type->value_case() != ONNX_NAMESPACE::TypeProto::kTensorType) {
+                                    fail_type_inference(
+                                        "inputs are expected to have tensor type and output type should not be null.");
+                                  }
+
+                                  // Right now we only support int16
+                                  y_type->mutable_tensor_type()->set_elem_type(ONNX_NAMESPACE::TensorProto::INT32);
+
+                                  ONNX_NAMESPACE::defs::math::utils::MatMulShapeInference(ctx, 0, 1);
+                                }));
+
+
 /**
  * @brief Shape inference for MatMul with right hand side matrix quantized into int4
  * @param ctx
@@ -3779,6 +3829,7 @@ Having this op allows runtime to do operator re-ordering to reduce compute FLOPs
       });
 
 #endif
+
 
 #ifndef _OPSCHEMA_LIB_
   // Register the NCHWc schemas if supported by the platform.
