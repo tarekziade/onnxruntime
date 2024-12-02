@@ -1329,8 +1329,11 @@ TEST(InferenceSessionTests, TestOptionalInputs) {
                                         "Invalid input name");
 
     // missing required
+    printf("here");
+
     ASSERT_STATUS_NOT_OK_AND_HAS_SUBSTR(RunOptionalInputTest(false, true, false, version, sess_env),
                                         (version == 3 ? "Invalid input name" : "Missing Input:"));
+    printf("here 2");
   }
 }
 
