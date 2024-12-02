@@ -1100,7 +1100,10 @@ static Status VerifyEachNodeIsAssignedToAnEpImpl(const Graph& graph, bool is_ver
                                                  NodePlacementMap& node_placements,
                                                  NodePlacementSet& node_placement_provider_set) {
   for (const auto& node : graph.Nodes()) {
+    
     const auto& node_provider = node.GetExecutionProviderType();
+    printf("%s(%s), provider: %s\n", node.OpType().c_str(), node.Name().c_str(), node_provider.c_str());
+
     if (node_provider.empty()) {
       return ORT_MAKE_STATUS(ONNXRUNTIME, NOT_IMPLEMENTED,
                              "Could not find an implementation for ",
