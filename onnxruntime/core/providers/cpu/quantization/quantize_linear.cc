@@ -11,6 +11,20 @@
 #include "core/mlas/inc/mlas.h"
 #include "core/util/qmath.h"
 
+
+extern "C" void
+    __attribute__((import_module("wasm_gemm"), import_name("onnx_dequantize_linear")))
+GeckoDequantizeLinear(
+    float M, 
+    float K, 
+    float N, 
+    uint32_t input,
+    uint32_t scale, 
+    uint32_t output, 
+    uint32_t zero_point);
+
+
+
 namespace onnxruntime {
 
 template <typename T>
@@ -265,6 +279,8 @@ ONNX_CPU_OPERATOR_TYPED_MS_KERNEL(
 template <typename T, typename OutT, bool is_4bit>
 struct DequantizeLinearApply;
 
+
+
 // The dimensions before quantize axis and after quantize axis can be flattened.
 // After flattening, the tensor can be represented by a rank-3 tensor.
 // If the quantization happens on the first or last axis, the flattened tensor is
@@ -284,8 +300,13 @@ struct DequantizeLinearApply<T, OutT, false> {
    * @param[out]   output                 same shape as input
    * @param[in]    zero_point             same shape as scale
    */
+
+  //  T= uint8,  OutT ==float
   void op(size_t M, size_t K, size_t N, const T* input,
           const OutT* scale, OutT* output, const T* zero_point) {
+    // 1 1 136134656
+    // 1 1 896
+    //auto start = std::chrono::high_resolution_clock::now();
     for (size_t m = 0; m < M; m++) {
       for (size_t k = 0; k < K; k++) {
         auto zp = zero_point ? static_cast<int32_t>(zero_point[k]) : 0;
@@ -295,6 +316,8 @@ struct DequantizeLinearApply<T, OutT, false> {
         }
       }
     }
+    //auto end = std::chrono::high_resolution_clock::now();
+    //std::cout << "time: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << std::endl;
   }
 
   /**
@@ -463,6 +486,7 @@ DEQUANTIZE_LINEAR_APPLY_FLOAT8(Float8E5M2FNUZ)
 
 #endif
 
+
 // formula is Y = (X - ZeroPoint) * Scale
 template <typename T>
 Status DequantizeLinear<T>::Compute(OpKernelContext* ctx) const {
@@ -508,10 +532,25 @@ Status DequantizeLinear<T>::Compute(OpKernelContext* ctx) const {
                                                     static_cast<size_t>(block_size_),
                                                     input, scale, output, zero_point);
     } else {
+      //auto start = std::chrono::high_resolution_clock::now();
+    if (process_block_size > 1000) {
+        
+      
+      GeckoDequantizeLinear(static_cast<float>(process_block_count),
+                        static_cast<float>(broadcast_dim),
+                        static_cast<float>(process_block_size),
+                        reinterpret_cast<uint32_t>(input),
+                        reinterpret_cast<uint32_t>(scale),
+                        reinterpret_cast<uint32_t>(output),
+                        reinterpret_cast<uint32_t>(zero_point));
+      } else {
+      //auto end = std::chrono::high_resolution_clock::now();
+      //std::cout << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " micros" << std::endl;
       DequantizeLinearApply<T, float, is_4bit>().op(static_cast<size_t>(process_block_count),
                                                     static_cast<size_t>(broadcast_dim),
                                                     static_cast<size_t>(process_block_size),
                                                     input, scale, output, zero_point);
+     }
     }
   } else if (to == ONNX_NAMESPACE::TensorProto::FLOAT16) {
     const MLFloat16* scale = x_scale.Data<MLFloat16>();

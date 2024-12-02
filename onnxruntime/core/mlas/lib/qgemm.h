@@ -36,6 +36,15 @@ Abstract:
 #include <string>
 #include <cstdlib>
 
+extern "C" void
+    __attribute__((import_module("wasm_gemm"), import_name("mlas_gemm_u8x8")))
+    xMlasGemmU8X8MultiplyAccumulateRowWasmSimd(
+    const float* A,
+    const float* B,
+    const float* C
+    );
+
+
 //
 // Define the default striding parameters used for the quantized integer
 // matrix/matrix multiply operation.

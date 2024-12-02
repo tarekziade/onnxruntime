@@ -3,12 +3,12 @@
 
 'use strict';
 
+
 //
 // This file contains the pre-run code for the ORT WebAssembly module. The code in this file will be injected into the
 // final module using Emscripten's `--pre-js` option.
 //
 // This file will only be used in build with flag `--use_jsep`.
-
 
 /**
  * initialize JSEP for asyncify support.
@@ -109,7 +109,7 @@ let jsepInitAsync = () => {
         if (Module.jsepSessionState) {
           throw new Error('Session already started');
         }
-        const state = Module.jsepSessionState = {sessionHandle: args[0], errors: []};
+        const state = Module.jsepSessionState = { sessionHandle: args[0], errors: [] };
 
         // Run the acyncified function: OrtRun() or OrtRunWithBinding()
         const ret = await runAsyncFunc(...args);
@@ -141,21 +141,21 @@ let jsepInitAsync = () => {
 
   // replace the original functions with asyncified versions
   Module['_OrtCreateSession'] = jsepWrapAsync(
-      Module['_OrtCreateSession'],
-      () => Module['_OrtCreateSession'],
-      v => Module['_OrtCreateSession'] = v);
+    Module['_OrtCreateSession'],
+    () => Module['_OrtCreateSession'],
+    v => Module['_OrtCreateSession'] = v);
   Module['_OrtRun'] = runAsync(jsepWrapAsync(
-      Module['_OrtRun'],
-      () => Module['_OrtRun'],
-      v => Module['_OrtRun'] = v));
+    Module['_OrtRun'],
+    () => Module['_OrtRun'],
+    v => Module['_OrtRun'] = v));
   Module['_OrtRunWithBinding'] = runAsync(jsepWrapAsync(
-      Module['_OrtRunWithBinding'],
-      () => Module['_OrtRunWithBinding'],
-      v => Module['_OrtRunWithBinding'] = v));
+    Module['_OrtRunWithBinding'],
+    () => Module['_OrtRunWithBinding'],
+    v => Module['_OrtRunWithBinding'] = v));
   Module['_OrtBindInput'] = jsepWrapAsync(
-      Module['_OrtBindInput'],
-      () => Module['_OrtBindInput'],
-      v => Module['_OrtBindInput'] = v);
+    Module['_OrtBindInput'],
+    () => Module['_OrtBindInput'],
+    v => Module['_OrtBindInput'] = v);
 
   // remove this function to make sure it is called only once.
   jsepInitAsync = undefined;
@@ -170,16 +170,16 @@ Module['jsepInit'] = (name, params) => {
 
   if (name === 'webgpu') {
     [Module.jsepBackend,
-     Module.jsepAlloc,
-     Module.jsepFree,
-     Module.jsepCopy,
-     Module.jsepCopyAsync,
-     Module.jsepCreateKernel,
-     Module.jsepReleaseKernel,
-     Module.jsepRunKernel,
-     Module.jsepCaptureBegin,
-     Module.jsepCaptureEnd,
-     Module.jsepReplay] = params;
+    Module.jsepAlloc,
+    Module.jsepFree,
+    Module.jsepCopy,
+    Module.jsepCopyAsync,
+    Module.jsepCreateKernel,
+    Module.jsepReleaseKernel,
+    Module.jsepRunKernel,
+    Module.jsepCaptureBegin,
+    Module.jsepCaptureEnd,
+    Module.jsepReplay] = params;
 
     // expose webgpu backend functions
     const backend = Module.jsepBackend;
@@ -211,11 +211,11 @@ Module['jsepInit'] = (name, params) => {
     // change the name.
 
     [Module.jsepBackend,
-     Module.jsepReserveTensorId,
-     Module.jsepReleaseTensorId,
-     Module['jsepEnsureTensor'],
-     Module.jsepUploadTensor,
-     Module['jsepDownloadTensor'],
+    Module.jsepReserveTensorId,
+    Module.jsepReleaseTensorId,
+    Module['jsepEnsureTensor'],
+    Module.jsepUploadTensor,
+    Module['jsepDownloadTensor'],
     ] = params;
 
     // This function is called from both JS and an EM_ASM block, it needs both a minifiable name and an explicit name.
@@ -243,7 +243,7 @@ Module['jsepInit'] = (name, params) => {
     };
     Module['jsepRegisterMLConstant'] = (externalFilePath, dataOffset, dataLength, builder, desc) => {
       return backend['registerMLConstant'](
-          externalFilePath, dataOffset, dataLength, builder, desc, Module.MountedFiles);
+        externalFilePath, dataOffset, dataLength, builder, desc, Module.MountedFiles);
     };
   }
 };

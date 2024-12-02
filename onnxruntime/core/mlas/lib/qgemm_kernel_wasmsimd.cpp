@@ -17,6 +17,7 @@ Abstract:
 #include "mlasi.h"
 #include "qgemm.h"
 
+
 // wasm implementation of "_mm_unpacklo_epi8"
 v128_t __attribute__((__always_inline__, __nodebug__)) wasm_i8x16_unpacklo(v128_t a, v128_t b) {
     return wasm_i8x16_shuffle(a, b, 0, 16, 1, 17, 2, 18, 3, 19, 4, 20, 5, 21, 6, 22, 7, 23);
@@ -324,23 +325,58 @@ MlasGemmQuantCopyPackB<MLAS_GEMM_U8X8_KERNEL_WASMSIMD>(
 
 MLAS_FORCEINLINE
 void
-MlasGemmU8X8MultiplyAccumulateRowWasmSimd(
+localMlasGemmU8X8MultiplyAccumulateRowWasmSimd(
     v128_t ABroadcast,
     const int16_t* B,
     v128_t Accumulators[2]
 )
 {
-    v128_t BElements0 = wasm_v128_load(&B[0]);
-    v128_t BElements1 = wasm_v128_load(&B[8]);
+  v128_t BElements0 = wasm_v128_load(&B[0]);
+  v128_t BElements1 = wasm_v128_load(&B[8]);
 
-    Accumulators[0] = wasm_i32x4_add(Accumulators[0], wasm_i32x4_dot_i16x8(BElements0, ABroadcast));
-    Accumulators[1] = wasm_i32x4_add(Accumulators[1], wasm_i32x4_dot_i16x8(BElements1, ABroadcast));
+  Accumulators[0] = wasm_i32x4_add(Accumulators[0], wasm_i32x4_dot_i16x8(BElements0, ABroadcast));
+  Accumulators[1] = wasm_i32x4_add(Accumulators[1], wasm_i32x4_dot_i16x8(BElements1, ABroadcast));
 }
 
 
-template<>
-size_t
-MlasGemmQuantKernel<MLAS_GEMM_U8X8_KERNEL_WASMSIMD>(
+#include <chrono>
+#include <iostream>
+
+
+
+MLAS_FORCEINLINE
+void MlasGemmU8X8MultiplyAccumulateRowWasmSimd(
+    v128_t ABroadcast,
+    const int16_t* B,
+    v128_t Accumulators[2]
+) {
+
+  v128_t BElements0 = wasm_v128_load(&B[0]);
+  v128_t BElements1 = wasm_v128_load(&B[8]);
+
+  Accumulators[0] = wasm_i32x4_add(Accumulators[0], wasm_i32x4_dot_i16x8(BElements0, ABroadcast));
+  Accumulators[1] = wasm_i32x4_add(Accumulators[1], wasm_i32x4_dot_i16x8(BElements1, ABroadcast));
+}
+
+extern "C" void 
+    __attribute__((import_module("wasm_gemm"), import_name("mlas_gemm")))
+  xMlasGemm(
+    const uint8_t* A,
+    const uint8_t* B,
+    int32_t* C,
+    float PackedCountK,
+    float CountM,
+    float CountN,
+    float ldc,
+    const int32_t* RowSumBuffer,
+    const int32_t* ColumnSumBuffer,
+    const int32_t* ZeroPointB,
+    float ZeroMode
+    );
+
+
+
+size_t MlasGemmWasm(
     const MLAS_GEMM_U8X8_KERNEL_WASMSIMD::PackedAType* A,
     const MLAS_GEMM_U8X8_KERNEL_WASMSIMD::PackedBType* B,
     int32_t* C,
@@ -351,11 +387,7 @@ MlasGemmQuantKernel<MLAS_GEMM_U8X8_KERNEL_WASMSIMD>(
     const int32_t* RowSumBuffer,
     const int32_t* ColumnSumBuffer,
     const int32_t* ZeroPointB,
-    bool ZeroMode
-    )
-{
-    MLAS_UNREFERENCED_PARAMETER(CountM);
-    MLAS_UNREFERENCED_PARAMETER(ldc);
+    bool ZeroMode) {
 
     while (CountN > 0) {
 
@@ -498,6 +530,58 @@ MlasGemmQuantKernel<MLAS_GEMM_U8X8_KERNEL_WASMSIMD>(
 
     return 1;
 }
+
+template<>
+size_t
+MlasGemmQuantKernel<MLAS_GEMM_U8X8_KERNEL_WASMSIMD>(
+    const MLAS_GEMM_U8X8_KERNEL_WASMSIMD::PackedAType* A,
+    const MLAS_GEMM_U8X8_KERNEL_WASMSIMD::PackedBType* B,
+    int32_t* C,
+    size_t PackedCountK,
+    size_t CountM,
+    size_t CountN,
+    size_t ldc,
+    const int32_t* RowSumBuffer,
+    const int32_t* ColumnSumBuffer,
+    const int32_t* ZeroPointB,
+    bool ZeroMode
+    )
+{
+    //MLAS_UNREFERENCED_PARAMETER(CountM);
+    //MLAS_UNREFERENCED_PARAMETER(ldc);
+    //std::cout << "Calling MlasGemmQuantKernel" << std::endl;
+
+    MlasGemmWasm(
+        A,
+        B,
+        C,
+        PackedCountK,
+        CountM,
+        CountN,
+        ldc,
+        RowSumBuffer,
+        ColumnSumBuffer,
+        ZeroPointB,
+        ZeroMode
+    );
+
+    /*
+    xMlasGemm(
+        reinterpret_cast<const uint8_t*>(A),
+        reinterpret_cast<const uint8_t*>(B),
+        reinterpret_cast<int32_t*>(C),
+        static_cast<float>(PackedCountK),
+        static_cast<float>(CountM),
+        static_cast<float>(CountN),
+        static_cast<float>(ldc),
+        RowSumBuffer,
+        ColumnSumBuffer,
+        ZeroPointB,
+        static_cast<float>(ZeroMode));
+    */
+    return 1;
+}
+
 
 const MLAS_GEMM_QUANT_DISPATCH MlasGemmU8X8DispatchWasmSimd = {
     MlasGemmQuantOperation<MLAS_GEMM_U8X8_KERNEL_WASMSIMD>,

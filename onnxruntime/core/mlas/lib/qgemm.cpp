@@ -17,6 +17,7 @@ Abstract:
 
 #include "mlasi.h"
 #include "qgemm.h"
+#include <iostream> 
 
 //
 // Define the parameters to execute segments of a QGEMM operation on worker
@@ -144,6 +145,8 @@ MlasGemmBatch(
 
     const double Complexity = double(M) * double(N) * double(K) * double(BatchN);
 
+    //std::cout << "Complexity: " << Complexity << std::endl;
+
     ptrdiff_t TargetThreadCount;
 
     if (Complexity < double(MLAS_QGEMM_THREAD_COMPLEXITY * GetMlasPlatform().MaximumThreadCount)) {
@@ -194,10 +197,16 @@ MlasGemmBatch(
         WorkBlock.ThreadCountN = 1;
     }
     TargetThreadCount = ThreadsPerGemm * BatchN;
+    //std::cout << "ThreadsPerGemm: " << ThreadsPerGemm << std::endl;
+    //std::cout << "TargetThreadCount: " << TargetThreadCount << std::endl;
+    //std::cout << "MaximumThreadCount: " << MaximumThreadCount << std::endl;
+
+
 
     MlasTrySimpleParallel(ThreadPool, TargetThreadCount, [&](ptrdiff_t tid) {
         const auto gemm_i = tid / ThreadsPerGemm;
         const auto blk_i = tid % ThreadsPerGemm;
+        //std::cout << "gemm_i: " << gemm_i << " blk_i: " << blk_i << std::endl;
         MlasGemmQuantThreaded(&WorkBlock, &Shape, &DataParams[gemm_i], blk_i);
     });
 }
@@ -277,6 +286,13 @@ MlasSymmQgemmBatch(
     const size_t ThreadCountM = MlasDivRoundup(M, StrideM);
     const size_t ThreadCountN = MlasDivRoundup(N, StrideN);
     ThreadsPerGemm = ThreadCountM * ThreadCountN;
+    
+    /*
+    std::cout << "ThreadsPerGemm" << ThreadsPerGemm << std::endl;
+    std::cout << "TargetThreadCount " <<TargetThreadCount << std::endl;
+    std::cout << "ThreadCountM" << ThreadCountM << std::endl;
+    std::cout << "ThreadCountN" << ThreadCountN << std::endl;
+    */
 
     MlasTrySimpleParallel(ThreadPool, ThreadsPerGemm * BatchN, [&](ptrdiff_t tid) {
         auto uarch = MLAS_CPUIDINFO::GetCPUIDInfo().IsCurrentCoreArmv8NarrowLd();

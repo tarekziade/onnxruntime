@@ -49,4 +49,33 @@ Module['unmountExternalData'] = () => {
  * @suppress {checkVars}
  */
 var SharedArrayBuffer = globalThis.SharedArrayBuffer ??
-    new WebAssembly.Memory({'initial': 0, 'maximum': 0, 'shared': true}).buffer.constructor;
+  new WebAssembly.Memory({ 'initial': 0, 'maximum': 0, 'shared': true }).buffer.constructor;
+
+
+/**
+* Custom call to instantiate WebAssembly module. so we can use custom imports 
+*/ Module["instantiateWasm"] = async (info, receiveInstance) => {
+  const wasmBinaryFile = findWasmBinary();
+  const bytes = await getBinaryPromise(wasmBinaryFile);
+  const module = await WebAssembly.compile(bytes);
+  let imports = getWasmImports();
+
+  const OPTIMIZED_GEMM = "mozIntGemm";
+  const optimizedGemmModule = WebAssembly[OPTIMIZED_GEMM];
+  const optimizedGemmModuleExports = new WebAssembly.Instance(optimizedGemmModule(), {
+    "": {
+      memory: wasmMemory
+    }
+  }).exports;
+
+  imports.wasm_gemm = optimizedGemmModuleExports;
+
+  try {
+    var instance = new WebAssembly.Instance(module, imports);
+    receiveInstance(instance);
+  } catch (error) {
+    console.error("Error creating WebAssembly instance:", error);
+    throw error;
+  }
+};
+
