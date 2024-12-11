@@ -131,45 +131,50 @@ Status FirefoxMatMulInteger8::Compute(OpKernelContext* ctx) const {
   #ifdef __EMSCRIPTEN__
   //MlasGemmBatch(gemm_shape, gemm_data_vec.data(), batch_size, ctx->GetOperatorThreadPool());
 
-  // moz gemmology will be called here...
-    Index rows_A = 4;
-    Index width = 64; // Must be a multiple of 64
-    Index cols_B = 8; // Must be a multiple of 8
-
-    // Generate example data for A and B
-    std::vector<int8_t> A(rows_A * width, 1); // Example data for matrix A
-    std::vector<int8_t> B(width * cols_B, 1); // Example data for matrix B
-    std::vector<float> bias(cols_B, 0.0f);    // Example bias, set to 0
-
     // Prepare output buffer
-    std::vector<float> output(rows_A * cols_B, 0.0f);
-
-    // Quantization parameters
-    float scale_A = 0.1f; // Example scale factor for A
-    float zero_point_A = 0.0f; // Example zero point for A
-    float scale_B = 0.2f; // Example scale factor for B
-    float zero_point_B = 0.0f; // Example zero point for B
-    float unquant_multiplier = 1.0f; // Example multiplier
+    std::vector<float> float_output(helper.M() * helper.N(), 0.0f);
 
     // Call the function
-    int8MultiplyAndAddBias(A.data(),
-                           scale_A,
-                           zero_point_A,
-                           B.data(),
-                           scale_B,
-                           zero_point_B,
-                           bias.data(),
-                           unquant_multiplier,
-                           rows_A,
-                           width,
-                           cols_B,
-                           output.data());
+    // matix A (M x K) * matrix B (K x N)
+    // matrix C (M x N)
+    size_t rows_a = static_cast<size_t>(helper.M());
+    size_t cols_b = static_cast<size_t>(helper.N());
+    size_t width = static_cast<size_t>(helper.K());
+
+    int8MultiplyAndAddBias(reinterpret_cast<const int8_t*>(a_data),
+                           1.0f,  // scale factor for A
+                           a_offset,
+                           reinterpret_cast<const int8_t*>(b_data),
+                           1.0f,  // scale factor for B
+                           0, // b_zero_point
+                           0,  // we don't have any bias
+                           1.0f, // quantization multiplier
+                           rows_a,  // rows A
+                           width,  // width
+                           cols_b,  // col B
+                           float_output.data());
+
+    // temporarily convert to int32
+    size_t num_elements = rows_a * cols_b;
+
+    for (size_t i = 0; i < num_elements; ++i) {
+        // Convert and assign: round and cast the float to int32_t
+        y_data[i] = static_cast<int32_t>(std::round(float_output[i]));
+
+        // Optional: Clamp to int32 range (unlikely needed if input floats are reasonable)
+        y_data[i] = std::clamp(
+            y_data[i],
+            std::numeric_limits<int32_t>::min(),
+            std::numeric_limits<int32_t>::max()
+        );
+    }
 
     // Print the output
+    
     std::cout << "Output matrix:\n";
-    for (Index i = 0; i < rows_A; ++i) {
-        for (Index j = 0; j < cols_B; ++j) {
-            std::cout << output[i * cols_B + j] << " ";
+    for (Index i = 0; i < rows_a; ++i) {
+        for (Index j = 0; j < cols_b; ++j) {
+            std::cout << y_data[i * cols_b + j] << " ";
         }
         std::cout << "\n";
     }
@@ -204,6 +209,7 @@ Status FirefoxMatMulInteger8::Compute(OpKernelContext* ctx) const {
     std::cout << std::endl; // Move to the next row
   }
 
+  // the result is dequantized to float...
   gemmology::Shift::Multiply(
       reinterpret_cast<const uint8_t*>(casted_a_data), 
       casted_b_data,  
@@ -213,6 +219,8 @@ Status FirefoxMatMulInteger8::Compute(OpKernelContext* ctx) const {
       gemmology::callbacks::Write(reinterpret_cast<float*>(y_data))
   );
 
+  // and we want int32..
+  //
   // Get the shape of the tensor
   std::cout << "y data result:" << std::endl;
 

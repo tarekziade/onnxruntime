@@ -112,8 +112,8 @@ function fallbackGemm(gemmToFallbackFunctionsMap) {
     var INITIAL_MEMORY = 16777216;
     var gemmWasmMemory = new WebAssembly.Memory({
       "initial": INITIAL_MEMORY / 65536,
-      "maximum": 4294967296 / 65536,
-      "shared": false
+      "maximum": 65536, // Maximum number of pages (4 GB)
+      "shared": true
     });
     const optimizedGemmModuleExports = new WebAssembly.Instance(optimizedGemmModule(), {
       "": {
