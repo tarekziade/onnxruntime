@@ -114,24 +114,22 @@ Status FirefoxMatMulInteger8::Compute(OpKernelContext* ctx) const {
     std::vector<float> float_output(helper.M() * helper.N(), 0.0f);
 
     // Call the function
-    // matix A (M x K) * matrix B (K x N)
+    // matrix A (M x K) * matrix B (K x N)
     // matrix C (M x N)
     size_t rows_a = static_cast<size_t>(helper.M());
     size_t cols_b = static_cast<size_t>(helper.N());
     size_t width = static_cast<size_t>(helper.K());
 
-    int8MultiplyAndAddBias(reinterpret_cast<const int8_t*>(a_data),
-                           1.0f,  // scale factor for A
-                           a_offset,
-                           reinterpret_cast<const int8_t*>(b_data),
-                           1.0f,  // scale factor for B
-                           0, // b_zero_point
-                           0,  // we don't have any bias
-                           1.0f, // quantization multiplier
-                           rows_a,  // rows A
-                           width,  // width
-                           cols_b,  // col B
-                           reinterpret_cast<float*>(y_data));
+    // gemmology is only doing A unsigned x B signed 
+    int8Multiply(reinterpret_cast<const int8_t*>(a_data),
+                         a_offset,
+                         reinterpret_cast<const int8_t*>(b_data),
+                         0, // b_zero_point
+                         rows_a,  // rows A
+                         width,  // width
+                         cols_b,  // col B
+                         reinterpret_cast<float*>(y_data));
+
 
     // Print the output
   #if 0
