@@ -42,7 +42,7 @@ class FirefoxMatMulInteger8 final : public MatMulIntegerBase {
 using Index = uint32_t;
 extern "C" void
     __attribute__((import_module("wasm_gemm"), import_name("int8_multiply")))
-    int8Multiply(const int8_t* input_A,
+    int8Multiply(const uint8_t* input_A,
                  float zero_point_A,
                  const int8_t* input_B,
                  float zero_point_B,
