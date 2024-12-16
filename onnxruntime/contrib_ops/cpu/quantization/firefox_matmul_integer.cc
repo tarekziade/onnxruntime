@@ -93,15 +93,19 @@ void DisplayMatrixSample(const uint32_t* matrix, size_t rows, size_t cols, const
 }
 
 void CompareMatrices(const uint32_t* matrix1, const uint32_t* matrix2, size_t rows, size_t cols, const std::string& matrix1_name, const std::string& matrix2_name) {
+    std::cout << "Comparing " << matrix1_name << " and " << matrix2_name << "\n";
+
     for (size_t i = 0; i < rows; ++i) {
         for (size_t j = 0; j < cols; ++j) {
           if (matrix1[i * cols + j] != matrix2[i * cols + j]) {
+            std::cout << "Mismatch between " << matrix1_name << " and " << matrix2_name << " at row " << i << ", col " << j << "\n";
             throw std::runtime_error(
                 "Mismatch between " + matrix1_name + " and " + 
                 matrix2_name + " at row " + std::to_string(i) + ", col " + std::to_string(j));
           }
         }
     }
+    std::cout << "Matrices match\n";
 }
 
 Status FirefoxMatMulInteger8::Compute(OpKernelContext* ctx) const {
