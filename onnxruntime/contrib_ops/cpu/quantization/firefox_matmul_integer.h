@@ -43,13 +43,13 @@ using Index = uint32_t;
 extern "C" void
     __attribute__((import_module("wasm_gemm"), import_name("int8_multiply")))
     int8Multiply(const uint8_t* input_A,
-                 float zero_point_A,
+                 const uint8_t zero_point_A,
                  const int8_t* input_B,
-                 float zero_point_B,
+                 const uint8_t* zero_point_B,
                  Index rows_A,
                  Index width,
                  Index cols_B,
-                 float* output);
+                 int32_t* output);
 
 
 #endif
