@@ -266,7 +266,10 @@ Status MatMulIntegerToFloatBase::ComputeCommon(OpKernelContext* ctx,
   // rowsA = M
   // width = K
   // colsB = N
+#if 0
   size_t rowsA = static_cast<size_t>(helper.M());
+
+  if (rowsA > 1) {
   size_t width = static_cast<size_t>(helper.K());
   size_t colsB = static_cast<size_t>(helper.N());
   
@@ -283,8 +286,14 @@ Status MatMulIntegerToFloatBase::ComputeCommon(OpKernelContext* ctx,
               is_b_scale_per_column,
               y_data
   );
+  }
+  else {
+#endif
+    MlasGemmBatch(gemm_shape, gemm_data_vec.data(), num_gemms, ctx->GetOperatorThreadPool());
   
- // MlasGemmBatch(gemm_shape, gemm_data_vec.data(), num_gemms, ctx->GetOperatorThreadPool());
+  //}
+
+ //
   /* 
   auto end = std::chrono::steady_clock::now();
   auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();

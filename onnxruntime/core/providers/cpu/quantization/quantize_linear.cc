@@ -534,8 +534,6 @@ Status DequantizeLinear<T>::Compute(OpKernelContext* ctx) const {
     } else {
       //auto start = std::chrono::high_resolution_clock::now();
     if (process_block_size > 1000) {
-        
-      
       GeckoDequantizeLinear(static_cast<float>(process_block_count),
                         static_cast<float>(broadcast_dim),
                         static_cast<float>(process_block_size),
