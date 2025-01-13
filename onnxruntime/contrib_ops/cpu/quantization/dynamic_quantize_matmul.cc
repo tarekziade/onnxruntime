@@ -263,17 +263,22 @@ Status MatMulIntegerToFloatBase::ComputeCommon(OpKernelContext* ctx,
   //std::cout << "Calling f32Multiply\n";
   // should split in parts and call ctx.ParallelFor just on the rows part
 
+#if 0
   // rowsA = M
   // width = K
   // colsB = N
-#if 0
   size_t rowsA = static_cast<size_t>(helper.M());
 
   if (rowsA > 1) {
   size_t width = static_cast<size_t>(helper.K());
   size_t colsB = static_cast<size_t>(helper.N());
-  
   const int8_t* b_data = static_cast<const int8_t*>(b_tensor->DataRaw());
+  //std::cout << "Calling GeckoMatmulIntegerToFloat\n";
+  //int threads = concurrency::ThreadPool::DegreeOfParallelism(ctx->GetOperatorThreadPool());
+  //std::cout << "degree of parallelism: " << threads << "\n";
+  //std::cout << "batch size: " << num_gemms << "\n";
+
+ 
 
   GeckoMatmulIntegerToFloat(a_data, 
               a_zp,  
@@ -291,7 +296,7 @@ Status MatMulIntegerToFloatBase::ComputeCommon(OpKernelContext* ctx,
 #endif
     MlasGemmBatch(gemm_shape, gemm_data_vec.data(), num_gemms, ctx->GetOperatorThreadPool());
   
-  //}
+ // }
 
  //
   /* 

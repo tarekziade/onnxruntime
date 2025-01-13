@@ -1695,6 +1695,8 @@ common::Status InferenceSession::Initialize() {
   if (session_profiler_.IsEnabled()) {
     tp = session_profiler_.Start();
   }
+//std::cout << "session Initialize" << std::endl;
+  //auto startInit = std::chrono::steady_clock::now();
 
   ORT_TRY {
     LOGS(*session_logger_, INFO) << "Initializing session.";
@@ -1720,6 +1722,9 @@ common::Status InferenceSession::Initialize() {
     }
 
     // Verify that there are no external initializers in the graph if external data is disabled.
+      //std::cout << "session Initialize loading main graph" << std::endl;
+
+
     onnxruntime::Graph& graph = model_->MainGraph();
 #ifdef DISABLE_EXTERNAL_INITIALIZERS
     const InitializedTensorSet& initializers = graph.GetAllInitializedTensors();
@@ -1767,6 +1772,8 @@ common::Status InferenceSession::Initialize() {
     TraceLoggingWriteStart(session_activity, "OrtInferenceSessionActivity");
     session_activity_started_ = true;
 #endif
+      //std::cout << "session Initialize - creating state" << std::endl;
+
 
     // now that we have all the execution providers, create the session state
     session_state_ = std::make_unique<SessionState>(
@@ -1824,6 +1831,10 @@ common::Status InferenceSession::Initialize() {
     }();
 
     if (!loading_ort_format) {
+        //std::cout << "session Initialize not using ort" << std::endl;
+
+
+
 #if !defined(ORT_MINIMAL_BUILD)
       const auto minimal_build_opt_config_value = session_options_.config_options.GetConfigOrDefault(
           kOrtSessionOptionsConfigMinimalBuildOptimizations, "");
@@ -1845,6 +1856,10 @@ common::Status InferenceSession::Initialize() {
                                                                *session_logger_));
 
 #ifdef USE_DML
+          //    std::cout << "session Initialize using DML" << std::endl;
+
+
+
       const IExecutionProvider* dmlExecutionProvider = execution_providers_.Get(kDmlExecutionProvider);
 
       if (dmlExecutionProvider) {
@@ -1900,10 +1915,16 @@ common::Status InferenceSession::Initialize() {
 #endif
 
       // apply any transformations to the main graph and any subgraphs
+      //auto start = std::chrono::steady_clock::now();
       ORT_RETURN_IF_ERROR_SESSIONID_(TransformGraph(graph, saving_ort_format));
+      //auto end = std::chrono::steady_clock::now();
+      //std::cout << "Graph transformations took " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms" << std::endl;
 
       // now that all the transforms are done, call Resolve on the main graph. this will recurse into the subgraphs.
+      //start = std::chrono::steady_clock::now();
       ORT_RETURN_IF_ERROR_SESSIONID_(graph.Resolve());
+      //end = std::chrono::steady_clock::now();
+      //std::cout << "Graph resolution took " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms" << std::endl;
 
       // Currently graph capture is only considered by CUDA EP, TRT EP, ROCM EP and JS EP.
       //
@@ -2052,6 +2073,9 @@ common::Status InferenceSession::Initialize() {
                           "Loading anything other than ORT format models is not enabled in this build."));
 #endif  // !defined(ORT_MINIMAL_BUILD)
     } else {
+      //std::cout << "session Initialize - loading ort" << std::endl;
+
+
       ORT_RETURN_IF_ERROR_SESSIONID_(PartitionOrtFormatModel(graph, execution_providers_, kernel_registry_manager_,
                                                              *session_state_, session_options_.config_options, *session_logger_));
 
@@ -2171,6 +2195,8 @@ common::Status InferenceSession::Initialize() {
     }
   }
 
+  //auto endInitialization = std::chrono::steady_clock::now();
+  //std::cout << "session Initialize - Initialization time: " << std::chrono::duration_cast<std::chrono::milliseconds>(endInitialization - startInit).count() << " ms" << std::endl;
   return status;
 }
 #if defined(_MSC_VER) && !defined(__clang__)

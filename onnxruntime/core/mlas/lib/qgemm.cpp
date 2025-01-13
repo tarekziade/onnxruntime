@@ -61,7 +61,6 @@ Return Value:
 {
     const ptrdiff_t ThreadIdM = ThreadId / WorkBlock->ThreadCountN;
     const ptrdiff_t ThreadIdN = ThreadId % WorkBlock->ThreadCountN;
-
     //
     // Partition the operation along the M dimension.
     //
@@ -197,16 +196,11 @@ MlasGemmBatch(
         WorkBlock.ThreadCountN = 1;
     }
     TargetThreadCount = ThreadsPerGemm * BatchN;
-    //std::cout << "ThreadsPerGemm: " << ThreadsPerGemm << std::endl;
-    //std::cout << "TargetThreadCount: " << TargetThreadCount << std::endl;
-    //std::cout << "MaximumThreadCount: " << MaximumThreadCount << std::endl;
-
 
 
     MlasTrySimpleParallel(ThreadPool, TargetThreadCount, [&](ptrdiff_t tid) {
         const auto gemm_i = tid / ThreadsPerGemm;
         const auto blk_i = tid % ThreadsPerGemm;
-        //std::cout << "gemm_i: " << gemm_i << " blk_i: " << blk_i << std::endl;
         MlasGemmQuantThreaded(&WorkBlock, &Shape, &DataParams[gemm_i], blk_i);
     });
 }

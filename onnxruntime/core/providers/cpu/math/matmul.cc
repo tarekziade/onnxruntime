@@ -289,8 +289,12 @@ Status MatMul<float>::Compute(OpKernelContext* ctx) const {
       data[i].alpha = alpha_attr_;
       data[i].beta = 0.0f;
     }
+    
+//auto start = std::chrono::steady_clock::now();
     MlasGemmBatch(trans_a ? CblasTrans : CblasNoTrans, trans_b ? CblasTrans : CblasNoTrans,
                   M, N, K, data.data(), max_len, thread_pool);
+    //auto end = std::chrono::steady_clock::now();
+    //std::cout << "MatMul<float>," << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "," << max_len << std::endl;
   }
   return Status::OK();
 }

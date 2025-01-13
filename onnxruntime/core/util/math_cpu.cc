@@ -15,6 +15,8 @@
  */
 // Modifications Copyright (c) Microsoft.
 
+#include <iostream>
+#include <chrono>
 #include "core/util/math_cpuonly.h"
 #include "core/util/math.h"
 #include "core/framework/float16.h"
