@@ -66,23 +66,24 @@ var SharedArrayBuffer = globalThis.SharedArrayBuffer ??
 */
 getWasmImports = function() {
  assignWasmImports();
-
- var optimizedGemmModuleExports;
-
  if (wasmMemory) {
    const gemmModule = WebAssembly["mozIntGemm"];
-   gemmModuleExports = new WebAssembly.Instance(gemmModule(), {
+   var gemmModuleExports = new WebAssembly.Instance(gemmModule(), {
     "": {
     memory: wasmMemory
     }
    }).exports;
+   return {
+    "env": wasmImports,
+    "wasi_snapshot_preview1": wasmImports,
+    "wasm_gemm": gemmModuleExports
+   };
+ } else {
+    return {
+    "env": wasmImports,
+    "wasi_snapshot_preview1": wasmImports,
+   };
  }
-
- return {
-  "env": wasmImports,
-  "wasi_snapshot_preview1": wasmImports,
-  "wasm_gemm": gemmModuleExports
- };
 }
 
 Module["instantiateWasm"] = async (info, receiveInstance) => {
