@@ -54,28 +54,47 @@ var SharedArrayBuffer = globalThis.SharedArrayBuffer ??
 
 /**
 * Custom call to instantiate WebAssembly module. so we can use custom imports 
-*/ Module["instantiateWasm"] = async (info, receiveInstance) => {
-  const wasmBinaryFile = findWasmBinary();
-  const bytes = await getBinaryPromise(wasmBinaryFile);
-  const module = await WebAssembly.compile(bytes);
-  let imports = getWasmImports();
+*/ 
 
-  const OPTIMIZED_GEMM = "mozIntGemm";
-  const optimizedGemmModule = WebAssembly[OPTIMIZED_GEMM];
-  const optimizedGemmModuleExports = new WebAssembly.Instance(optimizedGemmModule(), {
+/**
+* Patches the original one so we can inject mozIntGemm and do a single compilation
+* 
+* getWasmImports() gets called in the main thread, then twice in each em-thread
+* The first call is done in createWasm(), and the second via Module["instantiateWasm"]
+* On the first call, the thread's wasmMemory variable is not initialized yet,
+* on the second call we can hook the import
+*/
+getWasmImports = function() {
+ assignWasmImports();
+
+ var optimizedGemmModuleExports;
+
+ if (wasmMemory) {
+   const gemmModule = WebAssembly["mozIntGemm"];
+   gemmModuleExports = new WebAssembly.Instance(gemmModule(), {
     "": {
-      memory: wasmMemory
+    memory: wasmMemory
     }
-  }).exports;
+   }).exports;
+ }
 
-  imports.wasm_gemm = optimizedGemmModuleExports;
+ return {
+  "env": wasmImports,
+  "wasi_snapshot_preview1": wasmImports,
+  "wasm_gemm": gemmModuleExports
+ };
+}
 
-  try {
-    var instance = new WebAssembly.Instance(module, imports);
-    receiveInstance(instance);
-  } catch (error) {
-    console.error("Error creating WebAssembly instance:", error);
-    throw error;
-  }
+Module["instantiateWasm"] = async (info, receiveInstance) => {
+ const wasmBinaryFile = findWasmBinary();
+ const bytes = await getBinaryPromise(wasmBinaryFile);
+ const module = await WebAssembly.compile(bytes);
+ try {
+  var instance = new WebAssembly.Instance(module, getWasmImports());
+  receiveInstance(instance, module);  // passing the module so threads can reuse it
+ } catch (error) {
+  console.error("Error creating WebAssembly instance:", error);
+  throw error;
+ }
 };
 
